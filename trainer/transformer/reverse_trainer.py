@@ -1,6 +1,7 @@
 import jax
 import optax
 from trainer.trainer import Trainer
+from flax.training import train_state, orbax_utils
 
 
 class ReverseTrainer(Trainer):
@@ -29,3 +30,16 @@ class ReverseTrainer(Trainer):
       return loss, (accuracy, rng)
 
     return calculate_loss
+
+  def init_optimizer(self, params):
+    # Initialize the learning rate schedule
+    lr_schedule = optax.warmup_cosine_decay_schedule(init_value=0.0,
+                                                     peak_value=self.lr,
+                                                     warmup_steps=self.warmup,
+                                                     decay_steps=self.max_iters,
+                                                     end_value=0.0)
+
+    optimizer = optax.chain(optax.clip_by_global_norm(1.0),
+                            optax.adam(lr_schedule))
+
+    return optimizer

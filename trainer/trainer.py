@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from tqdm import tqdm
+from absl import logging
 
 import jax
 
@@ -13,6 +14,7 @@ import orbax
 from orbax import checkpoint
 
 from models.transformer.transformer_predictor import TransformerPredictor
+from models.model_map import model_by_model_name
 
 
 class Trainer:
@@ -24,6 +26,7 @@ class Trainer:
                max_iters,
                lr=1e-3,
                warmup=100,
+               weight_decay=0.01,
                seed=42,
                **model_kwargs) -> None:
     super().__init__()
@@ -32,9 +35,11 @@ class Trainer:
     self.max_iters = max_iters
     self.lr = lr
     self.warmup = warmup
+    self.weight_decay = weight_decay
     self.seed = seed
 
-    self.model = TransformerPredictor(**model_kwargs)
+    self.model = model_by_model_name[self.model_name](**model_kwargs)
+    logging.info(f'{self.model}')
 
     # Setup logging dir
     self.log_dir = os.path.join(self.checkpoint_dir, self.model_name, 'log')
@@ -70,19 +75,15 @@ class Trainer:
         },
         example_input,
         is_training=True)['params']
-    # Initialize the learning rate schedule
-    lr_schedule = optax.warmup_cosine_decay_schedule(init_value=0.0,
-                                                     peak_value=self.lr,
-                                                     warmup_steps=self.warmup,
-                                                     decay_steps=self.max_iters,
-                                                     end_value=0.0)
 
-    optimizer = optax.chain(optax.clip_by_global_norm(1.0),
-                            optax.adam(lr_schedule))
-    # Initialize training state
-    self.state = train_state.TrainState.create(apply_fn=self.model.apply,
-                                               params=params,
-                                               tx=optimizer)
+    self.state = None
+
+    optimizer = self.init_optimizer()
+
+    self.state = train_state.TrainState.create(
+        apply_fn=self.model.apply,
+        params=params if self.state is None else self.state.params,
+        tx=optimizer)
 
   def create_trainer_functions(self) -> None:
     """
@@ -113,6 +114,9 @@ class Trainer:
     # Jitted train and eval steps
     self.train_step = jax.jit(train_step)
     self.eval_step = jax.jit(eval_step)
+
+  def setup_optimizer(self):
+    raise NotImplementedError
 
   def get_loss_function(self):
     raise NotImplementedError
