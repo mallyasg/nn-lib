@@ -36,18 +36,42 @@ def numpy_collate(batch):
     return np.array(batch)
 
 
-dataset = partial(ReverseDataset, 10, 16)
-rev_train_loader = data.DataLoader(dataset(50000,
-                                           np_rng=np.random.default_rng(42)),
-                                   batch_size=128,
-                                   shuffle=True,
-                                   drop_last=True,
-                                   collate_fn=numpy_collate)
-rev_val_loader = data.DataLoader(dataset(1000,
-                                         np_rng=np.random.default_rng(43)),
-                                 batch_size=128,
-                                 collate_fn=numpy_collate)
-rev_test_loader = data.DataLoader(dataset(10000,
-                                          np_rng=np.random.default_rng(44)),
-                                  batch_size=128,
-                                  collate_fn=numpy_collate)
+class ReverseDataLoader:
+  """
+  Provides train, val and test data loaders for reverse predicton data.
+  """
+  train_data_loader: data.DataLoader
+  val_loader: data.DataLoader
+  test_loader: data.DataLoader
+
+  def __init__(self,
+               batch_size: int = 128,
+               num_classes: int = 10,
+               seq_len: int = 16,
+               num_train_data_points: int = 50000,
+               num_val_data_points: int = 1000,
+               num_test_data_points: int = 10000) -> None:
+    dataset = partial(ReverseDataset, num_classes, seq_len)
+    self.train_loader = data.DataLoader(dataset(
+        num_train_data_points, np_rng=np.random.default_rng(42)),
+                                        batch_size=batch_size,
+                                        shuffle=True,
+                                        drop_last=True,
+                                        collate_fn=numpy_collate)
+    self.val_loader = data.DataLoader(dataset(num_val_data_points,
+                                              np_rng=np.random.default_rng(43)),
+                                      batch_size=batch_size,
+                                      collate_fn=numpy_collate)
+    self.test_loader = data.DataLoader(dataset(
+        num_test_data_points, np_rng=np.random.default_rng(44)),
+                                       batch_size=batch_size,
+                                       collate_fn=numpy_collate)
+
+  def get_train_loader(self) -> data.DataLoader:
+    return self.train_loader
+
+  def get_val_loader(self) -> data.DataLoader:
+    return self.val_loader
+
+  def get_test_loader(self) -> data.DataLoader:
+    return self.test_loader
