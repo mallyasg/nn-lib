@@ -11,9 +11,14 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('workdir', None, 'Directory to store training artifacts')
 config_flags.DEFINE_config_file(
-    'config',
+    'model_config',
     None,
     'File path containing model name and its associated hyperparameters',
+    lock_config=True)
+config_flags.DEFINE_config_file(
+    'data_config',
+    None,
+    'File path containing data for training and its associated metadata',
     lock_config=True)
 
 
@@ -27,9 +32,9 @@ def main(argv):
   platform.work_unit().create_artifact(platform.ArtifactType.DIRECTORY,
                                        FLAGS.workdir, 'workdir')
 
-  train.train_and_evaluate(FLAGS.config, FLAGS.workdir)
+  train.train_and_evaluate(FLAGS.model_config, FLAGS.data_config, FLAGS.workdir)
 
 
 if __name__ == '__main__':
-  flags.mark_flags_as_required(['config', 'workdir'])
+  flags.mark_flags_as_required(['model_config', 'data_config', 'workdir'])
   app.run(main)
