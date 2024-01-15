@@ -39,7 +39,7 @@ class Trainer:
     self.seed = seed
 
     self.model = model_by_model_name[self.model_name](**model_kwargs)
-    logging.info(f'{self.model}')
+    logging.info(f'Model Config : {self.model}')
 
     # Setup logging dir
     self.log_dir = os.path.join(self.checkpoint_dir, self.model_name, 'log')
@@ -87,8 +87,8 @@ class Trainer:
 
   def create_trainer_functions(self) -> None:
     """
-        Create necessary trainer functions -- loss calculation, train and eval steps.
-        """
+                Create necessary trainer functions -- loss calculation, train and eval steps.
+                """
     calculate_loss = self.get_loss_function()
 
     # Function defining train step
